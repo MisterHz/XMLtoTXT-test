@@ -5,6 +5,14 @@ function App() {
  const [files, setFiles] = useState([]);
     const [renamedFiles, setRenamedFiles] = useState([]);
 
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Ensure two digits for month
+      const day = String(date.getDate()).padStart(2, '0'); // Ensure two digits for day
+      const year = String(date.getFullYear()).slice(-2); // Get last two digits of year
+      return `${month}/${day}/${year}`;
+  }
+  
     const parseXmlToDict = (xmlContent) => {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
@@ -13,6 +21,11 @@ function App() {
             const element = xmlDoc.querySelector(path);
             return element ? element.textContent : '';
         };
+
+        const getTextContentOrder = (parent, tag) => {
+          const element = parent.querySelector(tag);
+          return element ? element.textContent.trim() : null;
+      }
 
         const baseData = {
             OrderType: getTextContent('OrderType'),
@@ -35,17 +48,18 @@ function App() {
             ShiptoParty_PostCode: getTextContent('ShiptoParty > PostCode').substring(0, 5),
             Remarks: getTextContent('Remarks'),
             OrderId: getTextContent('OrderId'),
-            RequestDeliveryDate: getTextContent('RequestDeliveryDate') ? new Date(getTextContent('RequestDeliveryDate')).toLocaleDateString('en-US') : '',
-        };
-
+            // RequestDeliveryDate: getTextContent('RequestDeliveryDate') ? new Date(getTextContent('RequestDeliveryDate')).toLocaleDateString('en-US') : '',
+            RequestDeliveryDate: getTextContent('RequestDeliveryDate') ? formatDate(getTextContent('RequestDeliveryDate')) : '',
+          };
+      
         const orderItems = Array.from(xmlDoc.querySelectorAll('OrderItems > OrderItem')).map(item => ({
-            OrderItems_ItemRefCode5: getTextContent('ItemRefCode5'),
-            OrderItems_LineNumber: getTextContent('LineNumber'),
-            OrderItems_SKU: getTextContent('SKU'),
-            OrderItems_ItemRefCode3: getTextContent('ItemRefCode3'),
-            OrderItems_OrderQuantity: getTextContent('OrderQuantity'),
-            OrderItems_ItemPrice: getTextContent('ItemPrice'),
-            OrderItems_CurrencyCode: getTextContent('CurrencyCode'),
+            OrderItems_ItemRefCode5: getTextContentOrder(item,'ItemRefCode5'),
+            OrderItems_LineNumber: getTextContentOrder(item,'LineNumber'),
+            OrderItems_SKU: getTextContentOrder(item,'SKU'),
+            OrderItems_ItemRefCode3: getTextContentOrder(item,'ItemRefCode3'),
+            OrderItems_OrderQuantity: getTextContentOrder(item,'OrderQuantity'),
+            OrderItems_ItemPrice: getTextContentOrder(item,'ItemPrice'),
+            OrderItems_CurrencyCode: getTextContentOrder(item,'CurrencyCode'),
         }));
 
         return orderItems.map(orderItem => ({ ...baseData, ...orderItem }));
@@ -120,6 +134,8 @@ function App() {
             "", "", "", "", 
             data.OrderItems_CurrencyCode
         ]);
+        //console.log(rows);
+        
 
         const content = [headers.join(delimiter), ...rows.map(row => row.join(delimiter))].join('\n');
         return content;
@@ -135,8 +151,15 @@ function App() {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const content = e.target.result;
+                    //console.log(content);
+                    
                     const parsedData = parseXmlToDict(content);
+                    //console.log(parsedData);
+                    
                     const txtContent = saveToTxt(parsedData);
+                    //console.log(txtContent);
+                    
+
                     const newFile = new File([txtContent], newName, { type: 'text/plain' });
                     resolve(newFile);
                 };
